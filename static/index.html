@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SyncViva - 同步观影</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Lobby -->
+        <div id="lobby">
+            <div class="lobby-card">
+                <h1>SyncViva</h1>
+                <p class="subtitle">异地同步观影</p>
+                <div class="form-group">
+                    <input type="text" id="nickname" placeholder="昵称" maxlength="20" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <input type="text" id="roomId" placeholder="房间号（留空自动生成）" maxlength="20" autocomplete="off">
+                </div>
+                <button id="joinBtn" class="btn-primary">进入房间</button>
+            </div>
+        </div>
+
+        <!-- Room -->
+        <div id="room" class="hidden">
+            <div class="room-header">
+                <span id="roomTitle">房间: ---</span>
+                <span id="memberCount">0 人在线</span>
+                <button id="leaveBtn" class="btn-small">离开</button>
+            </div>
+            <div class="room-body">
+                <div class="player-section">
+                    <div class="video-input">
+                        <input type="text" id="videoUrl" placeholder="输入视频链接（mp4/m3u8 直链 或 Bilibili BV号/链接）" autocomplete="off">
+                        <button id="loadVideoBtn" class="btn-primary">加载</button>
+                    </div>
+                    <div id="playerContainer">
+                        <video id="videoPlayer" controls></video>
+                        <iframe id="biliPlayer" class="hidden" allowfullscreen frameborder="0"
+                            sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+                        <div id="playerPlaceholder">
+                            <p>输入视频链接开始观影</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-section">
+                    <div id="memberList"></div>
+                    <div id="chatMessages"></div>
+                    <div class="chat-input">
+                        <input type="text" id="chatInput" placeholder="发消息..." maxlength="500" autocomplete="off">
+                        <button id="sendChatBtn">发送</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="app.js"></script>
+</body>
+</html>
