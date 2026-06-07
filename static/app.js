@@ -100,6 +100,12 @@
     $("#loadVideoBtn").addEventListener("click", loadFromInput);
     $("#videoUrl").addEventListener("keydown", (e) => { if (e.key === "Enter") loadFromInput(); });
 
+    function isBilibiliSource(input) {
+        if (/BV[a-zA-Z0-9]{10}/.test(input)) return true;
+        if (/bilibili\.com|bilibili\.tv|b23\.tv|bili2233\.cn/i.test(input)) return true;
+        return false;
+    }
+
     function loadFromInput() {
         const raw = $("#videoUrl").value.trim();
         if (!raw) return;
@@ -107,10 +113,9 @@
         let url = raw;
         let source = "alist";
 
-        const bvMatch = raw.match(/BV[a-zA-Z0-9]+/);
-        if (bvMatch || raw.includes("bilibili.com")) {
+        if (isBilibiliSource(raw)) {
             source = "bilibili";
-            url = bvMatch ? bvMatch[0] : raw;
+            url = raw;
         }
 
         send("set_video", { url, source });
@@ -125,9 +130,27 @@
             video.classList.add("hidden");
             placeholder.classList.add("hidden");
             biliFrame.classList.remove("hidden");
-            const bvid = url.match(/BV[a-zA-Z0-9]+/);
+
+            const bvid = url.match(/BV[a-zA-Z0-9]{10}/);
             if (bvid) {
                 biliFrame.src = `https://player.bilibili.com/player.html?bvid=${bvid[0]}&autoplay=0&high_quality=1`;
+                addSystemMsg("Bilibili 视频已加载（支持播放/暂停同步，跳转不支持精确同步）");
+            } else if (/b23\.tv|bili2233\.cn/i.test(url)) {
+                biliFrame.classList.add("hidden");
+                placeholder.classList.remove("hidden");
+                placeholder.innerHTML = "<p>短链接无法直接解析 BV 号<br>请在浏览器打开短链后复制完整 bilibili.com 链接粘贴</p>";
+                addSystemMsg("提示：请将 b23.tv 短链在浏览器打开后复制完整链接");
+            } else if (/bilibili\.com/i.test(url)) {
+                // bilibili.com link without BV — try av number or other format
+                const avMatch = url.match(/av(\d+)/i);
+                if (avMatch) {
+                    biliFrame.src = `https://player.bilibili.com/player.html?aid=${avMatch[1]}&autoplay=0&high_quality=1`;
+                    addSystemMsg("Bilibili 视频已加载（支持播放/暂停同步，跳转不支持精确同步）");
+                } else {
+                    biliFrame.classList.add("hidden");
+                    placeholder.classList.remove("hidden");
+                    placeholder.innerHTML = "<p>无法解析该 Bilibili 链接<br>请使用包含 BV 号的链接</p>";
+                }
             }
         } else {
             biliFrame.classList.add("hidden");
@@ -165,7 +188,10 @@
     });
 
     function applySync(payload) {
-        if (currentSource !== "alist") return;
+        if (currentSource === "bilibili") {
+            applyBiliSync(payload);
+            return;
+        }
 
         ignoreEvents = true;
         const diff = Math.abs(video.currentTime - payload.time);
@@ -186,6 +212,28 @@
         }
 
         setTimeout(() => { ignoreEvents = false; }, 300);
+    }
+
+    function applyBiliSync(payload) {
+        const frame = biliFrame.contentWindow;
+        if (!frame) return;
+        switch (payload.action) {
+            case "play":
+                frame.postMessage({ type: "player:play" }, "*");
+                break;
+            case "pause":
+                frame.postMessage({ type: "player:pause" }, "*");
+                break;
+            case "seek":
+                addSystemMsg(`[同步] ${payload.from} 跳转到 ${fmtTime(payload.time)}（Bilibili 不支持精确跳转同步，请手动调整）`);
+                break;
+        }
+    }
+
+    function fmtTime(sec) {
+        const m = Math.floor(sec / 60);
+        const s = Math.floor(sec % 60);
+        return `${m}:${s.toString().padStart(2, "0")}`;
     }
 
     // --- Chat ---

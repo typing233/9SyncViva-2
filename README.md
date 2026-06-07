@@ -55,6 +55,30 @@ docker compose up --build
 
 ## 限制
 
-- Bilibili 使用 embed iframe，仅支持播放/暂停同步，精确 seek 受限
+### Bilibili 同步能力
+
+Bilibili 视频通过官方 embed iframe 播放，受跨域安全限制：
+
+| 操作 | 同步支持 | 说明 |
+|------|---------|------|
+| 播放/暂停 | ✅ 支持 | 通过 postMessage 控制 |
+| 进度跳转 (seek) | ❌ 不支持 | iframe 无法可靠接收 seek 指令，当有人跳转时聊天区会提示目标时间，需手动调整 |
+| 倍速 | ❌ 不支持 | embed 播放器不暴露倍速接口 |
+
+**如需完整同步（含精确跳转），建议使用 Alist 直链方式播放。**
+
+### Bilibili 链接格式支持
+
+| 格式 | 示例 | 支持 |
+|------|------|------|
+| BV 号 | `BV1xx411c7mD` | ✅ |
+| 完整链接（含 BV）| `https://www.bilibili.com/video/BV1xx411c7mD` | ✅ |
+| AV 号链接 | `https://www.bilibili.com/video/av12345` | ✅ |
+| b23.tv 短链 | `https://b23.tv/xxxxxx` | ⚠️ 需先在浏览器打开后复制完整链接 |
+
+> b23.tv 短链需要 302 跳转才能获取 BV 号，前端无法直接跨域解析。页面会提示用户手动展开。
+
+### 其他
+
 - 不存储聊天历史，刷新后消失
 - 房间在所有人离开后自动销毁
