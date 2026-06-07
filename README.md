@@ -61,9 +61,11 @@ Bilibili 视频通过官方 embed iframe 播放，受跨域安全限制：
 
 | 操作 | 同步支持 | 说明 |
 |------|---------|------|
-| 播放/暂停 | ✅ 支持 | 通过 postMessage 控制 |
+| 播放/暂停 | ✅ 支持 | 页面提供「同步播放」「同步暂停」按钮，点击后通过 postMessage 控制本地 iframe 并广播给其他人 |
 | 进度跳转 (seek) | ❌ 不支持 | iframe 无法可靠接收 seek 指令，当有人跳转时聊天区会提示目标时间，需手动调整 |
 | 倍速 | ❌ 不支持 | embed 播放器不暴露倍速接口 |
+
+> **注意**：在 Bilibili 模式下，必须通过页面上的「同步播放/暂停」按钮来操作，直接在 iframe 内点击无法被捕获，不会同步给其他人。
 
 **如需完整同步（含精确跳转），建议使用 Alist 直链方式播放。**
 
@@ -74,9 +76,11 @@ Bilibili 视频通过官方 embed iframe 播放，受跨域安全限制：
 | BV 号 | `BV1xx411c7mD` | ✅ |
 | 完整链接（含 BV）| `https://www.bilibili.com/video/BV1xx411c7mD` | ✅ |
 | AV 号链接 | `https://www.bilibili.com/video/av12345` | ✅ |
-| b23.tv 短链 | `https://b23.tv/xxxxxx` | ⚠️ 需先在浏览器打开后复制完整链接 |
+| 番剧 EP 链接 | `https://www.bilibili.com/bangumi/play/ep12345` | ✅ |
+| 番剧 SS 链接 | `https://www.bilibili.com/bangumi/play/ss12345` | ✅ |
+| b23.tv 短链 | `https://b23.tv/xxxxxx` | ✅ 后端自动解析 |
 
-> b23.tv 短链需要 302 跳转才能获取 BV 号，前端无法直接跨域解析。页面会提示用户手动展开。
+> b23.tv 短链由后端 `/api/resolve` 接口跟随 302 跳转解析为完整链接，前端自动处理。
 
 ### 其他
 

@@ -2,10 +2,12 @@ package main
 
 import (
 	"embed"
+	"encoding/json"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -39,8 +41,46 @@ func main() {
 		go client.ReadPump()
 	})
 
+	http.HandleFunc("/api/resolve", handleResolve)
+
 	log.Printf("SyncViva server listening on :%s", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func handleResolve(w http.ResponseWriter, r *http.Request) {
+	url := r.URL.Query().Get("url")
+	if url == "" {
+		http.Error(w, "missing url param", 400)
+		return
+	}
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	finalURL := url
+	for i := 0; i < 5; i++ {
+		resp, err := client.Get(finalURL)
+		if err != nil {
+			break
+		}
+		resp.Body.Close()
+		if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+			loc := resp.Header.Get("Location")
+			if loc == "" {
+				break
+			}
+			finalURL = loc
+		} else {
+			break
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"url": finalURL})
 }

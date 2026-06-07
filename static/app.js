@@ -7,12 +7,13 @@
     const video = $("#videoPlayer");
     const biliFrame = $("#biliPlayer");
     const placeholder = $("#playerPlaceholder");
+    const biliControls = $("#biliControls");
 
     let ws = null;
     let nickname = "";
     let currentSource = ""; // "alist" | "bilibili"
     let hls = null;
-    let ignoreEvents = false; // prevent echo loops
+    let ignoreEvents = false;
 
     // --- Lobby ---
     $("#joinBtn").addEventListener("click", joinRoom);
@@ -24,7 +25,6 @@
         if (!nickname) { alert("请输入昵称"); return; }
         let roomId = $("#roomId").value.trim();
         if (!roomId) roomId = randomId();
-
         connectWS(roomId, nickname);
     }
 
@@ -100,15 +100,32 @@
     $("#loadVideoBtn").addEventListener("click", loadFromInput);
     $("#videoUrl").addEventListener("keydown", (e) => { if (e.key === "Enter") loadFromInput(); });
 
+    function isShortLink(input) {
+        return /b23\.tv|bili2233\.cn/i.test(input);
+    }
+
     function isBilibiliSource(input) {
         if (/BV[a-zA-Z0-9]{10}/.test(input)) return true;
         if (/bilibili\.com|bilibili\.tv|b23\.tv|bili2233\.cn/i.test(input)) return true;
         return false;
     }
 
-    function loadFromInput() {
-        const raw = $("#videoUrl").value.trim();
+    async function loadFromInput() {
+        let raw = $("#videoUrl").value.trim();
         if (!raw) return;
+
+        if (isShortLink(raw)) {
+            addSystemMsg("正在解析短链接...");
+            const resolved = await resolveShortLink(raw);
+            if (resolved && resolved !== raw) {
+                raw = resolved;
+                $("#videoUrl").value = raw;
+                addSystemMsg("短链已解析: " + raw);
+            } else {
+                addSystemMsg("短链解析失败，请手动在浏览器打开后复制完整链接");
+                return;
+            }
+        }
 
         let url = raw;
         let source = "alist";
@@ -122,35 +139,66 @@
         loadVideo(url, source);
     }
 
+    async function resolveShortLink(url) {
+        try {
+            const resp = await fetch(`/api/resolve?url=${encodeURIComponent(url)}`);
+            if (!resp.ok) return null;
+            const data = await resp.json();
+            return data.url || null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function buildBiliEmbedUrl(url) {
+        const bvMatch = url.match(/BV[a-zA-Z0-9]{10}/);
+        if (bvMatch) {
+            return `https://player.bilibili.com/player.html?bvid=${bvMatch[0]}&autoplay=0&high_quality=1`;
+        }
+
+        const avMatch = url.match(/av(\d+)/i);
+        if (avMatch) {
+            return `https://player.bilibili.com/player.html?aid=${avMatch[1]}&autoplay=0&high_quality=1`;
+        }
+
+        const epMatch = url.match(/ep(\d+)/i);
+        if (epMatch) {
+            return `https://player.bilibili.com/player.html?epid=${epMatch[1]}&autoplay=0&high_quality=1`;
+        }
+
+        const ssMatch = url.match(/ss(\d+)/i);
+        if (ssMatch) {
+            return `https://player.bilibili.com/player.html?season_id=${ssMatch[1]}&autoplay=0&high_quality=1`;
+        }
+
+        const mdMatch = url.match(/md(\d+)/i);
+        if (mdMatch) {
+            return `https://player.bilibili.com/player.html?media_id=${mdMatch[1]}&autoplay=0&high_quality=1`;
+        }
+
+        return null;
+    }
+
     function loadVideo(url, source) {
         currentSource = source;
         if (hls) { hls.destroy(); hls = null; }
+        biliControls.classList.add("hidden");
 
         if (source === "bilibili") {
             video.classList.add("hidden");
             placeholder.classList.add("hidden");
             biliFrame.classList.remove("hidden");
+            biliControls.classList.remove("hidden");
 
-            const bvid = url.match(/BV[a-zA-Z0-9]{10}/);
-            if (bvid) {
-                biliFrame.src = `https://player.bilibili.com/player.html?bvid=${bvid[0]}&autoplay=0&high_quality=1`;
-                addSystemMsg("Bilibili 视频已加载（支持播放/暂停同步，跳转不支持精确同步）");
-            } else if (/b23\.tv|bili2233\.cn/i.test(url)) {
+            const embedUrl = buildBiliEmbedUrl(url);
+            if (embedUrl) {
+                biliFrame.src = embedUrl;
+                addSystemMsg("Bilibili 视频已加载 — 请使用下方「同步播放/暂停」按钮控制，iframe 内点击不会同步");
+            } else {
                 biliFrame.classList.add("hidden");
+                biliControls.classList.add("hidden");
                 placeholder.classList.remove("hidden");
-                placeholder.innerHTML = "<p>短链接无法直接解析 BV 号<br>请在浏览器打开短链后复制完整 bilibili.com 链接粘贴</p>";
-                addSystemMsg("提示：请将 b23.tv 短链在浏览器打开后复制完整链接");
-            } else if (/bilibili\.com/i.test(url)) {
-                // bilibili.com link without BV — try av number or other format
-                const avMatch = url.match(/av(\d+)/i);
-                if (avMatch) {
-                    biliFrame.src = `https://player.bilibili.com/player.html?aid=${avMatch[1]}&autoplay=0&high_quality=1`;
-                    addSystemMsg("Bilibili 视频已加载（支持播放/暂停同步，跳转不支持精确同步）");
-                } else {
-                    biliFrame.classList.add("hidden");
-                    placeholder.classList.remove("hidden");
-                    placeholder.innerHTML = "<p>无法解析该 Bilibili 链接<br>请使用包含 BV 号的链接</p>";
-                }
+                placeholder.innerHTML = "<p>无法解析该 Bilibili 链接，请尝试其他格式</p>";
             }
         } else {
             biliFrame.classList.add("hidden");
@@ -171,7 +219,20 @@
         }
     }
 
-    // --- Sync Controls ---
+    // --- Bilibili Sync Buttons ---
+    $("#biliPlayBtn").addEventListener("click", () => {
+        const frame = biliFrame.contentWindow;
+        if (frame) frame.postMessage({ type: "player:play" }, "*");
+        send("sync", { action: "play", time: 0 });
+    });
+
+    $("#biliPauseBtn").addEventListener("click", () => {
+        const frame = biliFrame.contentWindow;
+        if (frame) frame.postMessage({ type: "player:pause" }, "*");
+        send("sync", { action: "pause", time: 0 });
+    });
+
+    // --- Sync Controls (Alist) ---
     video.addEventListener("play", () => {
         if (ignoreEvents) return;
         send("sync", { action: "play", time: video.currentTime });
@@ -277,6 +338,7 @@
         lobby.classList.remove("hidden");
         video.src = "";
         biliFrame.src = "";
+        biliControls.classList.add("hidden");
         $("#chatMessages").innerHTML = "";
     });
 
