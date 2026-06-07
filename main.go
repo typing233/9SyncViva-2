@@ -43,6 +43,14 @@ func main() {
 
 	http.HandleFunc("/api/resolve", handleResolve)
 
+	emby := NewEmbyClient()
+	if emby != nil {
+		http.HandleFunc("/api/emby/libraries", emby.HandleLibraries)
+		http.HandleFunc("/api/emby/items", emby.HandleItems)
+		http.HandleFunc("/api/emby/stream", emby.HandleStream)
+		log.Printf("Emby integration enabled: %s", os.Getenv("EMBY_URL"))
+	}
+
 	log.Printf("SyncViva server listening on :%s", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatal(err)
