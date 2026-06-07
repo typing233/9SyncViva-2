@@ -88,6 +88,19 @@ body {
 
 .btn-small:hover { background: #f44336; }
 
+.btn-password {
+    padding: 0.3rem 0.6rem;
+    background: transparent;
+    border: 1px solid #666;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.btn-password:hover { border-color: #4fc3f7; }
+
+.btn-password.locked { border-color: #ff9800; }
+
 /* Modal */
 .modal {
     position: fixed;
@@ -220,6 +233,20 @@ body {
 }
 
 .video-input input { flex: 1; }
+
+.live-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.8rem;
+    color: #888;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.live-toggle input[type="checkbox"] {
+    cursor: pointer;
+}
 
 #playerContainer {
     flex: 1;

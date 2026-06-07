@@ -121,7 +121,11 @@
         const { type, payload } = msg;
         switch (type) {
             case "room_state":
-                enterRoom(payload);
+                if (currentRoomId && currentRoomId === payload.roomId) {
+                    updateRoomState(payload);
+                } else {
+                    enterRoom(payload);
+                }
                 break;
             case "set_video":
                 loadVideo(payload.url, payload.source, payload.isLive);
@@ -171,6 +175,7 @@
         currentRoomId = state.roomId;
         $("#roomTitle").textContent = "房间: " + state.roomId;
         isOwner = state.owner === nickname;
+        roomHasPassword = !!state.hasPassword;
         updateOwnerUI(state.owner);
         updateMembers(state.members, state.owner);
 
@@ -189,16 +194,31 @@
         checkEmbyAvailable();
     }
 
+    let roomHasPassword = false;
+
     function updateOwnerUI(ownerNick) {
         isOwner = ownerNick === nickname;
         if (isOwner) {
             $("#ownerBadge").classList.remove("hidden");
             $("#roomMode").classList.remove("hidden");
             $("#videoInputBar").classList.remove("hidden");
+            $("#passwordBtn").classList.remove("hidden");
         } else {
             $("#ownerBadge").classList.add("hidden");
             $("#roomMode").classList.add("hidden");
-            // In strict mode, hide video input for non-owners
+            $("#passwordBtn").classList.add("hidden");
+        }
+        updatePasswordBtnState();
+    }
+
+    function updatePasswordBtnState() {
+        const btn = $("#passwordBtn");
+        if (roomHasPassword) {
+            btn.classList.add("locked");
+            btn.title = "房间已加密 — 点击修改或清除密码";
+        } else {
+            btn.classList.remove("locked");
+            btn.title = "房间公开 — 点击设置密码";
         }
     }
 
@@ -208,6 +228,34 @@
             showToast("房间模式已切换: " + (payload.mode === "free" ? "自由模式" : "房主控制"));
         }
     }
+
+    function updateRoomState(state) {
+        roomHasPassword = !!state.hasPassword;
+        updateOwnerUI(state.owner);
+        updateMembers(state.members, state.owner);
+        if (state.mode) $("#roomMode").value = state.mode;
+        updatePasswordBtnState();
+    }
+
+    // --- Password Management (Owner) ---
+    $("#passwordBtn").addEventListener("click", () => {
+        $("#setPasswordModal").classList.remove("hidden");
+        $("#setPasswordInput").value = "";
+        $("#setPasswordInput").focus();
+    });
+
+    $("#setPasswordConfirmBtn").addEventListener("click", () => {
+        const pw = $("#setPasswordInput").value;
+        send("set_password", { password: pw });
+        $("#setPasswordModal").classList.add("hidden");
+        roomHasPassword = pw.length > 0;
+        updatePasswordBtnState();
+        showToast(pw ? "房间密码已设置" : "房间密码已清除，现在是公开房间");
+    });
+
+    $("#setPasswordCancelBtn").addEventListener("click", () => {
+        $("#setPasswordModal").classList.add("hidden");
+    });
 
     // --- Room Mode ---
     $("#roomMode").addEventListener("change", (e) => {
@@ -238,9 +286,15 @@
     }
 
     function detectIsLive(url) {
+        // FLV streams are almost always live
         if (/\.flv(\?|$)/i.test(url)) return true;
-        if (/\/live\//i.test(url)) return true;
+        // URL path or params containing "live" indicator
+        if (/[/&?]live[/&?=_-]/i.test(url) || /\/live\./i.test(url)) return true;
+        // Common live stream URL patterns
         if (/live.*\.m3u8/i.test(url)) return true;
+        if (/\/livestream\//i.test(url)) return true;
+        // RTMP-style paths adapted for HTTP delivery
+        if (/\/stream\/\w+\.m3u8/i.test(url)) return true;
         return false;
     }
 
@@ -263,7 +317,7 @@
 
         let url = raw;
         let source = "alist";
-        let live = detectIsLive(raw);
+        let live = $("#liveCheckbox").checked || detectIsLive(raw);
 
         if (isBilibiliSource(raw)) {
             source = "bilibili";
@@ -272,6 +326,7 @@
 
         send("set_video", { url, source, isLive: live });
         loadVideo(url, source, live);
+        $("#liveCheckbox").checked = false;
     }
 
     async function resolveShortLink(url) {

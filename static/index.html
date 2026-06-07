@@ -26,13 +26,23 @@
             </div>
         </div>
 
-        <!-- Password Modal -->
+        <!-- Password Modal (for joining) -->
         <div id="passwordModal" class="modal hidden">
             <div class="modal-content">
                 <h3>该房间需要密码</h3>
                 <input type="password" id="modalPassword" placeholder="输入房间密码" autocomplete="off">
                 <button id="modalPasswordBtn" class="btn-primary">确认</button>
                 <button id="modalCancelBtn" class="btn-small">取消</button>
+            </div>
+        </div>
+
+        <!-- Set Password Modal (for owner) -->
+        <div id="setPasswordModal" class="modal hidden">
+            <div class="modal-content">
+                <h3>设置房间密码</h3>
+                <input type="password" id="setPasswordInput" placeholder="输入新密码（留空则清除密码）" autocomplete="off">
+                <button id="setPasswordConfirmBtn" class="btn-primary">确认</button>
+                <button id="setPasswordCancelBtn" class="btn-small">取消</button>
             </div>
         </div>
 
@@ -46,6 +56,7 @@
                     <option value="free">自由模式</option>
                     <option value="strict">房主控制</option>
                 </select>
+                <button id="passwordBtn" class="btn-password hidden" title="设置/清除房间密码">🔒</button>
                 <button id="embyBtn" class="btn-emby hidden">Emby</button>
                 <button id="leaveBtn" class="btn-small">离开</button>
             </div>
@@ -53,6 +64,7 @@
                 <div class="player-section">
                     <div class="video-input" id="videoInputBar">
                         <input type="text" id="videoUrl" placeholder="输入视频链接（mp4/m3u8/flv 直链 或 Bilibili 链接）" autocomplete="off">
+                        <label class="live-toggle" title="手动标记为直播流"><input type="checkbox" id="liveCheckbox"> 直播</label>
                         <button id="loadVideoBtn" class="btn-primary">加载</button>
                     </div>
                     <div id="playerContainer">

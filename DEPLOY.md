@@ -123,9 +123,35 @@ docker run -d --name syncviva -p 8080:8080 --env-file .env syncviva
 ### 视频源
 
 - **直链**：粘贴 mp4/m3u8 文件直链
-- **直播**：粘贴 m3u8/flv 直播流地址
+- **直播**：粘贴 m3u8/flv 直播流地址（详见下方直播支持说明）
 - **Bilibili**：粘贴 BV 号、AV 链接、番剧链接、b23.tv 短链
 - **Emby**：房主点击顶部 "Emby" 按钮浏览媒体库选片
+
+### 直播源支持
+
+**支持的直播流格式：**
+
+| 格式 | 扩展名/协议 | 播放方式 | 示例 |
+|------|-------------|----------|------|
+| HLS 直播流 | `.m3u8` | hls.js | `http://cdn.example.com/live/stream.m3u8` |
+| HTTP-FLV | `.flv` | flv.js | `http://cdn.example.com/live/stream.flv` |
+| HLS 点播 | `.m3u8` | hls.js | `http://example.com/video/index.m3u8` |
+| MP4 直链 | `.mp4` | 原生 HTML5 | `http://example.com/video.mp4` |
+
+**自动识别为直播的 URL 模式：**
+
+- 扩展名为 `.flv` 的链接
+- URL 路径中包含 `/live/` 或 `live` 关键词的 m3u8
+- URL 中含有 `/livestream/` 路径
+
+如果自动识别不准确，加载时可勾选输入框旁的「直播」复选框手动标记。
+
+**直播模式的同步行为：**
+
+- 仅同步 播放/暂停 状态
+- 不进行进度跳转同步（直播流无法 seek）
+- 不发送心跳时间校正
+- 播放器左上角显示红色 LIVE 标记
 
 ### 同步模式
 

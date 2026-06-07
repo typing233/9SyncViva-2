@@ -279,6 +279,9 @@ func (c *Client) joinRoom(p JoinPayload) {
 	room.mu.Lock()
 	if room.owner == nil {
 		room.owner = c
+		if p.Password != "" {
+			room.password = p.Password
+		}
 	}
 	room.mu.Unlock()
 
